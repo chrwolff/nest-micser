@@ -1,0 +1,12 @@
+ID: nest-micser
+_schema-version: '2.1'
+version: 0.0.1
+
+modules:
+ - name: nest
+   type: nodejs
+   path: nest
+   provides:
+    - name: nest_api
+      properties:
+         url: ${default-url}
