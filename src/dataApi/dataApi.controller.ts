@@ -1,3 +1,5 @@
+import { Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import {
   Controller,
   Post,
@@ -7,22 +9,44 @@ import {
   Get,
   Param,
 } from '@nestjs/common';
-import { DataApiService } from './dataApi.service';
 import { Movie } from './dataTypes';
+import { MESSAGE_SERVICE } from 'src/microServiceConfig';
 
 @Controller()
 export class DataApiController {
-  constructor(private readonly dataService: DataApiService) {}
+  constructor(@Inject(MESSAGE_SERVICE) private client: ClientProxy) {}
 
   @Post('/createMovie')
   @UsePipes(ValidationPipe)
   async createMovie(@Body() movie: Movie): Promise<Movie> {
-    return this.dataService.createMovie(movie);
+    let id = await this.client
+      .send({ channel: 'createMovie' }, this.marshal(movie))
+      .toPromise<string>();
+    return { id, ...movie };
   }
 
   @Get('/getMovie/:id')
   @UsePipes(ValidationPipe)
   async getMovie(@Param('id') id): Promise<Movie> {
-    return this.dataService.getMovieById(id);
+    let databaseMovie = await this.client
+      .send({ channel: 'getMovieById' }, id)
+      .toPromise<any>();
+    return this.unmarshal(id, databaseMovie);
+  }
+
+  private marshal(movie: Movie): any {
+    return {
+      name: movie.canonicalName,
+      year: movie.year,
+    };
+  }
+
+  private unmarshal(id: string, databaseMovie: any): Movie {
+    let movie: Movie = {
+      id,
+      canonicalName: databaseMovie.name,
+      year: databaseMovie.year,
+    };
+    return movie;
   }
 }
